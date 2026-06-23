@@ -1,0 +1,41 @@
+# TEMPORARY local test compose — two RTL-SDRs:
+#   session 1: RTL2838 (SN 00001234) → ACARS
+#   session 2: RTL-SDR Blog V4 (SN 00000978) → VDL2
+# Remove this file (and the temporary rtl-sdr entry in flake.nix) once the
+# container is verified working.
+---
+services:
+  xng:
+    build:
+      # Builds from this repo; the Dockerfile git-clones the xng source.
+      context: .
+      dockerfile: Dockerfile
+    image: docker-xng:test
+    container_name: xng
+    restart: unless-stopped
+    # RTL-SDR USB passthrough.
+    device_cgroup_rules:
+      - "c 189:* rwm"
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb:ro
+    ports:
+      - "8080:8080" # live web dashboard
+    environment:
+      - TZ=Etc/UTC
+      - XNG_STATION_ID=XX-TEST-1
+      - XNG_HTTP=0.0.0.0:8080
+      - XNG_VERBOSE=1
+      # session 1 — ACARS on the RTL2838 (SN 00001234)
+      - XNG_MODE=acars
+      - XNG_DRIVER=rtlsdr
+      - XNG_SERIAL=00001234
+      - XNG_CENTER=131.1375M
+      - XNG_SAMPLE_RATE=2400000
+      - XNG_CHANNELS=131.85;131.825;131.725;131.65;131.55;131.525;131.475;131.45;131.425;131.25;131.125;130.85;130.825;130.55;130.45;130.425
+      # session 2 — VDL2 on the RTL-SDR Blog V4 (SN 00000978)
+      - XNG_MODE_2=vdl2
+      - XNG_DRIVER_2=rtlsdr
+      - XNG_SERIAL_2=00000978
+      - XNG_CENTER_2=136.4125M
+      - XNG_SAMPLE_RATE_2=2400000
+      - XNG_CHANNELS_2=136725000;136700000;136675000;136650000;136300000;136100000

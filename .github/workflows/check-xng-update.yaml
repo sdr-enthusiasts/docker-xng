@@ -1,0 +1,80 @@
+---
+name: Check xng update
+
+# Watches the upstream xng repository for new commits on its default branch
+# and, when the published image was built from an older commit, triggers the
+# Deploy workflow to rebuild against the newest source.
+#
+# Source of truth for "what is deployed" is the published image's
+# /CONTAINER_VERSION file (written by the Dockerfile from the built commit).
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  packages: read
+
+env:
+  UPSTREAM_REPO: airframesio/xng
+  UPSTREAM_BRANCH: master
+
+jobs:
+  check:
+    name: Compare upstream HEAD to deployed version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get upstream HEAD commit
+        id: upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          upstream_sha="$(gh api \
+            "repos/${UPSTREAM_REPO}/commits/${UPSTREAM_BRANCH}" \
+            --jq '.sha')"
+          echo "Upstream ${UPSTREAM_REPO}@${UPSTREAM_BRANCH} HEAD: ${upstream_sha}"
+          echo "sha=${upstream_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Read deployed image CONTAINER_VERSION
+        id: deployed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ghcr.io/${{ github.repository }}:latest
+        run: |
+          set -euo pipefail
+          # Log in so we can pull the (possibly private) published image.
+          echo "${GH_TOKEN}" | docker login ghcr.io \
+            -u "${{ github.actor }}" --password-stdin
+
+          deployed_sha=""
+          if docker pull "${IMAGE}" >/dev/null 2>&1; then
+            deployed_sha="$(docker run --rm --entrypoint cat "${IMAGE}" \
+              /CONTAINER_VERSION 2>/dev/null | tr -d '[:space:]' || true)"
+          else
+            echo "No published image yet (${IMAGE}); will trigger a build."
+          fi
+          echo "Deployed CONTAINER_VERSION: ${deployed_sha:-<none>}"
+          echo "sha=${deployed_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger Deploy when out of date
+        if: steps.upstream.outputs.sha != steps.deployed.outputs.sha
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+          DEPLOYED_SHA: ${{ steps.deployed.outputs.sha }}
+        run: |
+          set -euo pipefail
+          reason="xng upstream ${UPSTREAM_BRANCH} advanced: deployed=${DEPLOYED_SHA:-none} -> upstream=${UPSTREAM_SHA}"
+          echo "${reason}"
+          gh workflow run "Deploy" \
+            --ref "${{ github.ref_name }}" \
+            -f reason="${reason}"
+
+      - name: Already up to date
+        if: steps.upstream.outputs.sha == steps.deployed.outputs.sha
+        run: echo "Deployed image is already built from the latest upstream commit."
