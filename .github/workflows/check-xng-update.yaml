@@ -1,12 +1,17 @@
 ---
 name: Check xng update
 
-# Watches the upstream xng repository for new commits on its default branch
-# and, when the published image was built from an older commit, triggers the
-# Deploy workflow to rebuild against the newest source.
+# Watches the upstream xng repository for new commits on the ref this image
+# actually builds and, when the published image was built from an older
+# commit, triggers the Deploy workflow to rebuild against the newest source.
 #
 # Source of truth for "what is deployed" is the published image's
 # /CONTAINER_VERSION file (written by the Dockerfile from the built commit).
+#
+# Source of truth for "what ref do we build" is the XNG_REF ARG in the
+# Dockerfile — NOT this file. Hardcoding a branch here silently breaks the
+# comparison whenever the Dockerfile is pinned to a topic branch or tag,
+# producing an unconditional daily rebuild that can never converge.
 
 on:
   schedule:
@@ -18,26 +23,48 @@ permissions:
   actions: write
   packages: read
 
-env:
-  UPSTREAM_REPO: airframesio/xng
-  UPSTREAM_BRANCH: master
-
 jobs:
   check:
     name: Compare upstream HEAD to deployed version
     runs-on: ubuntu-latest
 
     steps:
+      # Required: `gh workflow run` resolves the target repo from the git
+      # remote, and the Dockerfile is parsed below for the pinned ref.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Read build ref from Dockerfile
+        id: ref
+        run: |
+          set -euo pipefail
+          arg_value() {
+            sed -n "s/^ARG $1=\"\\(.*\\)\"\$/\\1/p" Dockerfile | tail -n1
+          }
+          repo_url="$(arg_value XNG_REPO)"
+          upstream_ref="$(arg_value XNG_REF)"
+          if [[ -z "${repo_url}" || -z "${upstream_ref}" ]]; then
+            echo "::error::Could not parse XNG_REPO/XNG_REF from Dockerfile" >&2
+            exit 1
+          fi
+          # https://github.com/owner/name.git -> owner/name
+          repo="${repo_url#https://github.com/}"
+          repo="${repo%.git}"
+          echo "Dockerfile builds ${repo}@${upstream_ref}"
+          echo "repo=${repo}" >> "$GITHUB_OUTPUT"
+          echo "ref=${upstream_ref}" >> "$GITHUB_OUTPUT"
+
       - name: Get upstream HEAD commit
         id: upstream
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_REPO: ${{ steps.ref.outputs.repo }}
+          UPSTREAM_REF: ${{ steps.ref.outputs.ref }}
         run: |
           set -euo pipefail
           upstream_sha="$(gh api \
-            "repos/${UPSTREAM_REPO}/commits/${UPSTREAM_BRANCH}" \
+            "repos/${UPSTREAM_REPO}/commits/${UPSTREAM_REF}" \
             --jq '.sha')"
-          echo "Upstream ${UPSTREAM_REPO}@${UPSTREAM_BRANCH} HEAD: ${upstream_sha}"
+          echo "Upstream ${UPSTREAM_REPO}@${UPSTREAM_REF} HEAD: ${upstream_sha}"
           echo "sha=${upstream_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Read deployed image CONTAINER_VERSION
@@ -65,13 +92,15 @@ jobs:
         if: steps.upstream.outputs.sha != steps.deployed.outputs.sha
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_REF: ${{ steps.ref.outputs.ref }}
           UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
           DEPLOYED_SHA: ${{ steps.deployed.outputs.sha }}
         run: |
           set -euo pipefail
-          reason="xng upstream ${UPSTREAM_BRANCH} advanced: deployed=${DEPLOYED_SHA:-none} -> upstream=${UPSTREAM_SHA}"
+          reason="xng upstream ${UPSTREAM_REF} advanced: deployed=${DEPLOYED_SHA:-none} -> upstream=${UPSTREAM_SHA}"
           echo "${reason}"
           gh workflow run "Deploy" \
+            --repo "${{ github.repository }}" \
             --ref "${{ github.ref_name }}" \
             -f reason="${reason}"
 
