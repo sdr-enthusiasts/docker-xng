@@ -2,8 +2,14 @@ FROM rust:1.96.0-bookworm@sha256:19817ead3289c8c631c73df281e18b59b172f6a31f4f563
 
 # Upstream git ref to build (branch, tag, or commit). Defaults to the
 # upstream default branch; pin to a tag/commit for a reproducible build.
+#
+# TEMPORARILY pinned to perf/acars-squelch: the ACARS envelope squelch (which
+# takes an idle 16-channel set from ~3.3% to ~1.35% of one core) is not on
+# master yet, and this image exists to A/B it against acarsdec on real
+# hardware. The branch is stacked on perf/acars-cpu-round2 (PR #181), which is
+# also unmerged. Set XNG_REF back to "master" once both land.
 ARG XNG_REPO="https://github.com/airframesio/xng.git"
-ARG XNG_REF="master"
+ARG XNG_REF="perf/acars-squelch"
 
 WORKDIR /tmp
 # hadolint ignore=DL3008,DL3003,SC1091
@@ -56,6 +62,7 @@ ENV XNG_CONFIG="" \
     XNG_JSON="false" \
     XNG_JSONL="" \
     XNG_UDP="" \
+    XNG_ZMQ="" \
     XNG_METRICS="" \
     XNG_HTTP="0.0.0.0:8080" \
     XNG_SBS="" \

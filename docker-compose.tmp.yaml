@@ -3,14 +3,20 @@
 #   session 2: RTL-SDR Blog V4 (SN 00000978) → VDL2
 # Remove this file (and the temporary rtl-sdr entry in flake.nix) once the
 # container is verified working.
+#
+# The ACARS session below runs the full 16-channel US plan around a 131.1375
+# centre at 2.4 MS/s — deliberately the same plan the squelch was benchmarked
+# against, so `docker stats` here is comparable to an acarsdec run on the same
+# channel set on the same host. Compare same-host only.
 ---
 services:
   xng:
     build:
-      # Builds from this repo; the Dockerfile git-clones the xng source.
+      # Builds from this repo; the Dockerfile git-clones the xng source at
+      # the ref pinned by XNG_REF (currently the perf/acars-squelch branch).
       context: .
       dockerfile: Dockerfile
-    image: docker-xng:test
+    image: fredclausen/xng-test:cpu
     container_name: xng
     restart: unless-stopped
     # RTL-SDR USB passthrough.
@@ -25,6 +31,8 @@ services:
       - XNG_STATION_ID=XX-TEST-1
       - XNG_HTTP=0.0.0.0:8080
       - XNG_VERBOSE=1
+      # Uncomment to test the zmq PUB output (bind on 5555).
+      # - XNG_ZMQ=tcp://0.0.0.0:5555
       # session 1 — ACARS on the RTL2838 (SN 00001234)
       - XNG_MODE=acars
       - XNG_DRIVER=rtlsdr

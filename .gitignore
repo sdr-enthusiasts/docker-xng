@@ -1,2 +1,5 @@
 .direnv
 .pre-commit-config.yaml
+
+# Temporary local-source build (unpublished xng changes); never commit.
+Dockerfile.local

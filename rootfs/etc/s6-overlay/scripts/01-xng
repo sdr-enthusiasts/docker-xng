@@ -16,7 +16,7 @@ mkdir -p /run/xng
 if [[ -n "${XNG_CONFIG}" ]]; then
     if [[ ! -f "${XNG_CONFIG}" ]]; then
         "${s6wrap[@]}" echo "XNG_CONFIG is set to '${XNG_CONFIG}' but no such file exists, exiting"
-        exit 1
+        exit 78
     fi
     "${s6wrap[@]}" echo "Using user-supplied station config: ${XNG_CONFIG}"
     exit 0
@@ -36,7 +36,7 @@ fi
 # ──────────────────────────────────────────────────────────────
 if [[ -z "${XNG_STATION_ID}" ]]; then
     "${s6wrap[@]}" echo "XNG_STATION_ID is not set, exiting"
-    exit 1
+    exit 78
 fi
 
 # session_var BASE INDEX  →  echo the value of XNG_<BASE> (index 1) or
@@ -154,6 +154,9 @@ emit_str "nmea-udp" "${XNG_NMEA_UDP}"
 emit_str "mqtt" "${XNG_MQTT}"
 emit_str "mqtt-topic" "${XNG_MQTT_TOPIC}"
 emit_array "udp" "${XNG_UDP}"
+# ZMQ PUB endpoints (global). Each element is [connect:]<scheme>://<address>
+# with scheme tcp:// or ipc://; multiple endpoints separated by ; or space.
+emit_array "zmq" "${XNG_ZMQ}"
 
 # ──────────────────────────────────────────────────────────────
 # Emit each session. Walk indices from 1 upward; stop at the first
@@ -167,12 +170,12 @@ emit_session() {
     mode="$(session_var MODE "${idx}")"
     if [[ -z "${mode}" ]]; then
         "${s6wrap[@]}" echo "Session ${idx}: MODE is not set, exiting"
-        exit 1
+        exit 78
     fi
 
     if ! sdr="$(compose_sdr "${idx}")" || [[ -z "${sdr}" ]]; then
         "${s6wrap[@]}" echo "Session ${idx}: no SDR set (need XNG_SDR${idx_suffix} or XNG_DRIVER${idx_suffix}), exiting"
-        exit 1
+        exit 78
     fi
 
     {
@@ -200,7 +203,7 @@ done
 
 if [[ "${SESSION_COUNT}" -eq 0 ]]; then
     "${s6wrap[@]}" echo "No session defined (set XNG_MODE + an SDR), exiting"
-    exit 1
+    exit 78
 fi
 
 # Gap check: if a higher index is defined past where we stopped, the
@@ -210,7 +213,7 @@ probe="${idx}"
 while [[ "${probe}" -le "${gap_end}" ]]; do
     if session_defined "${probe}"; then
         "${s6wrap[@]}" echo "Session index gap: session ${probe} is defined but session ${idx} is not. Sessions must be numbered consecutively from 1. Exiting"
-        exit 1
+        exit 78
     fi
     probe=$((probe + 1))
 done
