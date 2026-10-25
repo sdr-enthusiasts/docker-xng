@@ -1,4 +1,16 @@
-FROM rust:1.96.0-bookworm@sha256:19817ead3289c8c631c73df281e18b59b172f6a31f4f563290f69cddd06c30e9 AS builder
+FROM rust:1.96.0-bookworm@sha256:19817ead3289c8c631c73df281e18b59b172f6a31f4f563290f69cddd06c30e9 AS rust
+
+# xng links libSoapySDR dynamically, so it must be built against the exact
+# SoapySDR the runtime image ships (the base image builds SoapySDR from the
+# latest upstream tag, so its soname moves). Build on the runtime base image
+# itself, with the Rust toolchain copied in from the pinned rust image.
+FROM ghcr.io/sdr-enthusiasts/docker-baseimage:soapy-full AS builder
+
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+COPY --from=rust /usr/local/rustup /usr/local/rustup
+COPY --from=rust /usr/local/cargo /usr/local/cargo
 
 # Upstream git ref to build (branch, tag, or commit). Defaults to the
 # upstream default branch; pin to a tag/commit for a reproducible build.
@@ -16,13 +28,13 @@ WORKDIR /tmp
 RUN set -x && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
+    build-essential \
     git \
     ca-certificates \
     pkg-config \
     libssl-dev \
     libclang-dev \
-    protobuf-compiler \
-    libsoapysdr-dev && \
+    protobuf-compiler && \
     # Clone the requested ref. `--branch` accepts branches and tags; for a
     # bare commit SHA we fall back to a full clone + checkout.
     git clone "${XNG_REPO}" /tmp/xng && \
