@@ -17,6 +17,11 @@ on:
         type: boolean
         description: "Build latest as test"
         default: false
+      base_variant:
+        required: false
+        type: string
+        description: "Debian codename to build on the next-release base images (e.g. forky). Blank builds on stable."
+        default: ""
 
 env:
   REGISTRY: ghcr.io
@@ -36,16 +41,18 @@ jobs:
         env:
           INPUTS_REASON: ${{ github.event.inputs.reason }}
           INPUTS_USE_TEST_IMAGE: ${{ github.event.inputs.use_test_image }}
+          INPUTS_BASE_VARIANT: ${{ github.event.inputs.base_variant }}
         run: |
           echo "Workflow dispatch reason: $INPUTS_REASON"
           echo "Use test image: $INPUTS_USE_TEST_IMAGE"
+          echo "Base variant: ${INPUTS_BASE_VARIANT:-none (stable)}"
 
   build_and_push:
     name: Image Build & Push
     if: |
       github.event.inputs.build_latest_as_test == 'false' ||
       github.event.inputs.build_latest_as_test == ''
-    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@d99ce7f631ca56901a4aecca25d5c6e4b0a7e2f1 # main
+    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@6fe78a4f1b7ab06ae480c7d2bb304f3a6c39055b # main
     with:
       push_enabled: true
       push_destinations: ghcr.io
@@ -57,6 +64,7 @@ jobs:
       build_baseimage_test: ${{ github.event.inputs.use_test_image == 'true' }}
       build_baseimage_url: :soapy-full/:soapy-full-test-pr
 
+      base_variant: ${{ github.event.inputs.base_variant }}
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -65,7 +73,7 @@ jobs:
     if: |
       github.event.inputs.build_latest_as_test == 'true' &&
       (github.event.inputs.use_test_image == 'false' || github.event.inputs.use_test_image == '')
-    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@d99ce7f631ca56901a4aecca25d5c6e4b0a7e2f1 # main
+    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@6fe78a4f1b7ab06ae480c7d2bb304f3a6c39055b # main
     with:
       push_enabled: true
       push_destinations: ghcr.io
@@ -77,5 +85,6 @@ jobs:
       build_baseimage_test: false
       platform_linux_arm32v7_enabled: false
       build_baseimage_url: :soapy-full/:soapy-full-test-pr
+      base_variant: ${{ github.event.inputs.base_variant }}
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
