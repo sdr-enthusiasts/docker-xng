@@ -15,13 +15,11 @@ COPY --from=rust /usr/local/cargo /usr/local/cargo
 # Upstream git ref to build (branch, tag, or commit). Defaults to the
 # upstream default branch; pin to a tag/commit for a reproducible build.
 #
-# TEMPORARILY pinned to perf/acars-squelch: the ACARS envelope squelch (which
-# takes an idle 16-channel set from ~3.3% to ~1.35% of one core) is not on
-# master yet, and this image exists to A/B it against acarsdec on real
-# hardware. The branch is stacked on perf/acars-cpu-round2 (PR #181), which is
-# also unmerged. Set XNG_REF back to "master" once both land.
+# TEMPORARILY pinned to perf/vdl2: the VDL2 performance work is not on master
+# yet, and this image exists to test it on real hardware. Set XNG_REF back to
+# "master" once it lands.
 ARG XNG_REPO="https://github.com/airframesio/xng.git"
-ARG XNG_REF="perf/acars-squelch"
+ARG XNG_REF="perf/vdl2"
 
 WORKDIR /tmp
 # hadolint ignore=DL3008,DL3003,SC1091
