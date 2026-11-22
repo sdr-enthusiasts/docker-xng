@@ -19,7 +19,7 @@ COPY --from=rust /usr/local/cargo /usr/local/cargo
 # yet, and this image exists to test it on real hardware. Set XNG_REF back to
 # "master" once it lands.
 ARG XNG_REPO="https://github.com/airframesio/xng.git"
-ARG XNG_REF="perf/vdl2"
+ARG XNG_REF="master"
 
 WORKDIR /tmp
 # hadolint ignore=DL3008,DL3003,SC1091
