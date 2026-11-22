@@ -27,6 +27,7 @@ RUN set -x && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
+    cmake \
     git \
     ca-certificates \
     pkg-config \
