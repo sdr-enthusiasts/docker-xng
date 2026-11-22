@@ -138,9 +138,6 @@ emit_array() {
     printf '[outputs]\n'
 } >>"${GENERATED_CONFIG}"
 
-if chk_enabled "${XNG_FEED_AIRFRAMES}"; then
-    emit_raw "feed-airframes" "true"
-fi
 if chk_enabled "${XNG_JSON}"; then
     emit_raw "json" "true"
 fi
@@ -157,6 +154,17 @@ emit_array "udp" "${XNG_UDP}"
 # ZMQ PUB endpoints (global). Each element is [connect:]<scheme>://<address>
 # with scheme tcp:// or ipc://; multiple endpoints separated by ; or space.
 emit_array "zmq" "${XNG_ZMQ}"
+
+# Airframes feeding. This must be an [outputs.airframes] block, not xng's
+# `feed-airframes = true` shorthand: the shorthand only feeds ACARS sessions,
+# so a VDL2 (or HFDL, ...) station silently fed nothing. With the block, every
+# session feeds its mode's own Airframes ingest in that ingest's native format
+# (ACARS UDP 5550, VDL2 UDP 5552, HFDL TCP 5556, ...) under XNG_STATION_ID
+# verbatim, so ACARS stations behave exactly as before. A sub-table has to
+# follow every plain [outputs] key, so this stays last in the section.
+if chk_enabled "${XNG_FEED_AIRFRAMES}"; then
+    printf '\n[outputs.airframes]\nenabled = true\n' >>"${GENERATED_CONFIG}"
+fi
 
 # ──────────────────────────────────────────────────────────────
 # Emit each session. Walk indices from 1 upward; stop at the first

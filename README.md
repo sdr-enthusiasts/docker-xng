@@ -153,7 +153,7 @@ Outputs are **global** — one set per station, no index suffix.
 | `XNG_JSONL`          | Append normalized messages to this JSONL file path.                | No       | Blank          |
 | `XNG_JSON`           | Set `true` to render console output as raw JSON.                   | No       | `false`        |
 | `XNG_UDP`            | acarsdec-JSON UDP target(s). See [Feeding](#feeding-acars_router). | No       | Blank          |
-| `XNG_FEED_AIRFRAMES` | Set `true` to feed Airframes (requires a valid station id).        | No       | `false`        |
+| `XNG_FEED_AIRFRAMES` | Set `true` to feed Airframes (requires a valid station id). Every session feeds its own mode's Airframes ingest (ACARS, VDL2, HFDL, ...) under `XNG_STATION_ID`. | No       | `false`        |
 | `XNG_MQTT`           | MQTT broker URL: `mqtt://[user:pass@]host[:port]`.                 | No       | Blank          |
 | `XNG_MQTT_TOPIC`     | MQTT topic prefix; messages publish to `<prefix>/<mode>`.          | No       | `xng`          |
 | `XNG_SBS`            | Serve SBS-1/BaseStation output (Mode S/ADS-B) on this address.     | No       | Blank          |
