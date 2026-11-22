@@ -27,10 +27,10 @@ RUN set -x && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
-    cmake \
     git \
     ca-certificates \
     pkg-config \
+    libopus-dev \
     libssl-dev \
     libclang-dev \
     protobuf-compiler && \
@@ -44,7 +44,14 @@ RUN set -x && \
     cat /CONTAINER_VERSION
 
 WORKDIR /tmp/xng
-RUN cargo build --release --bin xng
+# xng's .cargo/config.toml builds libopus from audiopus_sys's bundled source,
+# which fails on armv7 (its NEON code conflicts with Rust's -mfpu=vfpv3-d16).
+# Statically link Debian's libopus.a instead; the runtime image is unaffected.
+# audiopus_sys searches "$LIBOPUS_LIB_DIR/lib", so give it a prefix whose
+# lib/ points at the multiarch libdir.
+RUN mkdir -p /tmp/opus && \
+    ln -s "$(pkg-config --variable=libdir opus)" /tmp/opus/lib && \
+    LIBOPUS_LIB_DIR=/tmp/opus cargo build --release --bin xng
 
 FROM ghcr.io/sdr-enthusiasts/docker-baseimage:soapy-full
 
