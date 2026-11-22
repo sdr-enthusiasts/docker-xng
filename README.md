@@ -2,9 +2,6 @@
 
 [![Discord](https://img.shields.io/discord/734090820684349521)](https://discord.gg/sTf9uYF)
 
-> [!CAUTION]
-> This is a test container and is NOT ready for production.
-
 Docker container for running [xng](https://github.com/airframesio/xng), the
 next-generation multi-mode SDR decoder for ACARS, VDL2, HFDL, satcom, AIS, and
 more. The container builds `xng` from upstream source and runs it as a
